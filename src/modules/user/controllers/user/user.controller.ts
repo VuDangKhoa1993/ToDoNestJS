@@ -12,6 +12,7 @@ import {
   Post,
   Put,
 } from '@nestjs/common';
+import { ValidationPipe } from '@shared/pipes/validation.pipe';
 
 @Controller('api/users')
 export class UserController {
@@ -31,7 +32,7 @@ export class UserController {
   @Put(':uuid')
   public async update(
     @Param('uuid', new ParseUUIDPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE })) uuid: string,
-    @Body() updateUserDto: UserUpdateDto
+    @Body(new ValidationPipe()) updateUserDto: UserUpdateDto
   ): Promise<UserDto> {
     return await this.userService.update(uuid, updateUserDto);
   }

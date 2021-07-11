@@ -5,6 +5,7 @@ import { UserCreateDto } from '@modules/user/dtos/usercreate.dto';
 import { UserService } from '@modules/user/services/user/user.service';
 import { Controller, Request, Post, UseGuards, Get, Body } from '@nestjs/common';
 import { Public } from '@shared/custom-decorators/isPublic';
+import { ValidationPipe } from '@shared/pipes/validation.pipe';
 
 @Controller()
 export class AppController {
@@ -27,11 +28,10 @@ export class AppController {
 
   @Public()
   @Post('auth/register')
-  public async create(@Body() createUserDto: UserCreateDto): Promise<UserDto> {
+  public async create(@Body(new ValidationPipe()) createUserDto: UserCreateDto): Promise<UserDto> {
     return await this.userService.create(createUserDto);
   }
   
-
   @Get('profile')
   async getProfile(@Request() req) {
     return req.user;

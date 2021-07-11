@@ -45,7 +45,7 @@ export class ToDoController {
   @Put(':uuid')
   public async update(
     @Param('uuid', new ParseUUIDPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE })) uuid: string,
-    @Body() todoUpdateDto: ToDoUpdateDto,
+    @Body(new ValidationPipe()) todoUpdateDto: ToDoUpdateDto,
   ): Promise<ToDoDto> {
     return await this.todoService.update(uuid, todoUpdateDto);
   }
