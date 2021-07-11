@@ -1,3 +1,5 @@
+import { ToDoDto } from '@modules/to-do/dtos/todo.dto';
+import { ToDoEntity } from '@modules/to-do/entities/todo.entity';
 import { UserDto } from '@modules/user/dtos/user.dto';
 import { UserCreateDto } from '@modules/user/dtos/usercreate.dto';
 import { UserUpdateDto } from '@modules/user/dtos/userupdate.dto';
@@ -5,92 +7,73 @@ import { UserEntity } from '@modules/user/entities/user.entity';
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { toUserDto } from '@shared/mapper/mapper';
-// import { users } from '@shared/mock.ts/mock-data';
 import { toPromise } from '@shared/utilities/utilities';
 import { Repository } from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(UserEntity)
-    private userRepository: Repository<UserEntity>
+    private userRepository: Repository<UserEntity>,
   ) {}
 
-  findAll(): Promise<UserEntity[]> {
-    return this.userRepository.find();
+  async findAll(): Promise<UserDto[]> {
+    const users = await this.userRepository.find({ relations: ['todos'] });
+    return toPromise(users.map((user: UserEntity) => toUserDto(user)));
   }
 
-  findOne(id: string) : Promise<UserEntity> {
-    return this.userRepository.findOne(id);
+  async findOne(id: string): Promise<UserDto> {
+    const user = await this.userRepository.findOne(id, {
+      relations: ['todos'],
+    });
+    if (!user) {
+      throw new HttpException('user does not exist!', HttpStatus.NOT_FOUND);
+    }
+    return toPromise(toUserDto(user));
+  }
+
+  async create(createUserDto: UserCreateDto): Promise<UserDto> {
+    const { userName, firstName, lastName, password, confirmPassword } =
+      createUserDto;
+    const userEntity = new UserEntity();
+    userEntity.firstName = firstName;
+    userEntity.lastName = lastName;
+    userEntity.userName = userName;
+    userEntity.password = password;
+    userEntity.confirmPassword = confirmPassword;
+    await this.userRepository.save(userEntity);
+    return toPromise(toUserDto(userEntity));
+  }
+
+  async update(userId: string, updateUserDto: UserUpdateDto): Promise<UserDto> {
+    const { firstName, lastName, userName, password, confirmPassword } =
+      updateUserDto;
+    const user = await this.userRepository.findOne(userId);
+    if (!user) {
+      throw new HttpException('User does not exist!', HttpStatus.NOT_FOUND);
+    }
+    user.firstName = firstName;
+    user.lastName = lastName;
+    user.userName = userName;
+    user.password = password;
+    user.confirmPassword = confirmPassword;
+    await this.userRepository.save(user);
+    return toPromise(toUserDto(user));
   }
 
   async remove(id: string): Promise<void> {
-    await this.userRepository.delete(id);
+    const user = await this.userRepository.findOne(id);
+    if (!user) {
+      throw new HttpException('User does not exist!', HttpStatus.NOT_FOUND);
+    }
+    await this.userRepository.remove(user);
   }
 
- // old code
-  // private users: UserEntity[] = users;
-  // async getAllUsers(): Promise<UserDto[]> {
-  //   return await this.users.map((item) => ({
-  //     userId: item.userId,
-  //     firstName: item.firstName,
-  //     lastName: item.lastName,
-  //     userName: item.userName,
-  //   }));
-  // }
-
-  // async getUserById(userId: string): Promise<UserDto> {
-  //   const index = this.users.findIndex(
-  //     (user: UserEntity) => user.userId === userId,
-  //   );
-  //   if (index < 0) {
-  //     throw new HttpException('user does not exist!', HttpStatus.NOT_FOUND);
-  //   }
-  //   return toPromise(toUserDto(this.users[index]));
-  // }
-
-  // // async createUser(user: UserCreateDto): Promise<UserDto> {
-  // //   const { firstName, lastName, userName, password, confirmPassword } = user;
-  // //   const userEntity = {
-  // //     userId: uuidv4(),
-  // //     firstName,
-  // //     lastName,
-  // //     userName,
-  // //     password,
-  // //     confirmPassword,
-  // //   };
-  // //   this.users.push(userEntity);
-  // //   return toPromise(toUserDto(userEntity));
-  // // }
-
-  // async updateUser(userId: string, body: UserUpdateDto): Promise<UserDto> {
-  //   const index = this.users.findIndex(
-  //     (user: UserEntity) => user.userId === userId,
-  //   );
-  //   if (index < 0) {
-  //     throw new HttpException('User does not exist', HttpStatus.NOT_FOUND);
-  //   }
-  //   this.users[index].firstName = body.firstName;
-  //   this.users[index].lastName = body.lastName;
-  //   this.users[index].userName = body.userName;
-  //   this.users[index].password = body.password;
-  //   this.users[index].confirmPassword = body.confirmPassword;
-  //   return toPromise(toUserDto(this.users[index]));
-  // }
-
-  // async delete(userId: string): Promise<UserDto> {
-  //   const index = this.users.findIndex(
-  //     (user: UserEntity) => user.userId === userId,
-  //   );
-  //   if (index < 0) {
-  //     throw new HttpException('User does not exist', HttpStatus.NOT_FOUND);
-  //   }
-  //   const deletedItem = this.users.splice(index, 1);
-  //   return toPromise(toUserDto(deletedItem[0]));
-  // }
-
-  // async findUserByUsername(username: string): Promise<any> {
-  //   return this.users.find((user: UserEntity) => user.userName === username);
-  // }
+  async findUserByUsername(username: string): Promise<UserEntity[]> {
+    return await this.userRepository.find({
+      where: {
+        userName: username,
+      },
+    });
+  }
 }

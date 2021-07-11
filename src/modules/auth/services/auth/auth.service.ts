@@ -11,18 +11,19 @@ export class AuthService {
   ) {}
 
   async validateUser(username: string, password: string): Promise<any> {
-    // const user = await this.userService.findUserByUsername(username);
-    // if (user && user.password === password) {
-    //   const { password, confirmPassword, ...result } = user;
-    //   return result;
-    // }
+    const user = await this.userService.findUserByUsername(username);
+    if (user && user.length > 0 && user[0].password === password) {
+      const { password, confirmPassword, ...result } = user[0];
+      return result;
+    }
     return null;
   }
 
   async login(user: UserDto) {
-    const payload = { username: user.userName, userId: user.userId };
+    const payload = { username: user.userName, userId: user.id };
     return {
-      access_token: this.jwtService.sign(payload)
+      access_token: this.jwtService.sign(payload),
+      ...user
     };
   }
 }

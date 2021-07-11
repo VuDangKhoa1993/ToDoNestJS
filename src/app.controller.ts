@@ -1,13 +1,16 @@
-import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
 import { LocalAuthGuard } from '@modules/auth/guards/local-auth.guard';
 import { AuthService } from '@modules/auth/services/auth/auth.service';
-import { Controller, Request, Post, UseGuards, Get } from '@nestjs/common';
+import { UserDto } from '@modules/user/dtos/user.dto';
+import { UserCreateDto } from '@modules/user/dtos/usercreate.dto';
+import { UserService } from '@modules/user/services/user/user.service';
+import { Controller, Request, Post, UseGuards, Get, Body } from '@nestjs/common';
 import { Public } from '@shared/custom-decorators/isPublic';
 
 @Controller()
 export class AppController {
   constructor(
-    private readonly authService: AuthService
+    private readonly authService: AuthService,
+    private readonly userService: UserService
   ) { }
 
   @Get()
@@ -21,6 +24,13 @@ export class AppController {
   async login(@Request() req) {
     return this.authService.login(req.user);
   }
+
+  @Public()
+  @Post('auth/register')
+  public async create(@Body() createUserDto: UserCreateDto): Promise<UserDto> {
+    return await this.userService.create(createUserDto);
+  }
+  
 
   @Get('profile')
   async getProfile(@Request() req) {

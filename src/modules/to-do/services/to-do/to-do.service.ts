@@ -1,57 +1,105 @@
+import { AssignToDoDto } from '@modules/to-do/dtos/assignToDo.dto';
 import { ToDoDto } from '@modules/to-do/dtos/todo.dto';
 import { ToDoCreateDto } from '@modules/to-do/dtos/todocreate.dto';
+import { ToDoUpdateDto } from '@modules/to-do/dtos/todoupdate.dto';
 import { ToDoEntity } from '@modules/to-do/entities/todo.entity';
-import { HttpStatus } from '@nestjs/common';
+import { UserEntity } from '@modules/user/entities/user.entity';
+import { BadRequestException, HttpStatus } from '@nestjs/common';
 import { HttpException, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { TodoStatus } from '@shared/constant/constant';
 import { toToDoDto } from '@shared/mapper/mapper';
-import { todos } from '@shared/mock.ts/mock-data';
 import { toPromise } from '@shared/utilities/utilities';
-import { v4 as uuidv4 } from 'uuid';
+import { Connection, Repository } from 'typeorm';
+
 @Injectable()
 export class ToDoService {
-  private todos: ToDoEntity[] = todos;
-  async getAllToDos() {
-    return await todos;
+  constructor(
+    @InjectRepository(ToDoEntity)
+    private todoRepository: Repository<ToDoEntity>,
+    private connection: Connection,
+  ) {}
+
+  async findAll(): Promise<ToDoDto[]> {
+    const todoEntities = await this.todoRepository.find({
+      relations: ['user'],
+    });
+    return toPromise(
+      todoEntities.map((toDoEntity: ToDoEntity) => toToDoDto(toDoEntity)),
+    );
   }
 
-  async getToDoById(id: string): Promise<ToDoDto> {
-    const index = this.todos.findIndex((todo: ToDoEntity) => todo.id === id);
-    if (index < 0) {
-      throw new HttpException(
-        "Todo item doesn't exist",
-        HttpStatus.BAD_REQUEST,
+  async findOne(id: string): Promise<ToDoDto> {
+    const todo = await this.todoRepository.findOne(id, { relations: ['user'] });
+    if (!todo) {
+      throw new HttpException('Todo does not exist', HttpStatus.NOT_FOUND);
+    }
+    return toPromise(toToDoDto(todo));
+  }
+
+  async create(createTodoDto: ToDoCreateDto): Promise<ToDoDto> {
+    const { name, description, status, dateOfCompletion } = createTodoDto;
+    // const userRepository = await this.connection.getRepository(UserEntity);
+    // const user = await userRepository.findOne(userId);
+    const todoEntity = new ToDoEntity();
+    todoEntity.name = name;
+    todoEntity.description = description;
+    // todoEntity.user = user;
+    todoEntity.status = status;
+    todoEntity.dateOfCompletion = dateOfCompletion;
+    await this.todoRepository.save(todoEntity);
+    return toPromise(toToDoDto(todoEntity));
+  }
+
+  async update(id: string, updateToDoDto: ToDoUpdateDto): Promise<ToDoDto> {
+    const { name, description, status, dateOfCompletion } = updateToDoDto;
+    const todoEntity = await this.todoRepository.findOne(id);
+    if (!todoEntity) {
+      throw new HttpException('Todo does not exist', HttpStatus.NOT_FOUND);
+    }
+
+    if (todoEntity.status === TodoStatus.COMPLETED) {
+      throw new BadRequestException(
+        'Could not update a todo with completed status',
       );
     }
-    return toPromise(toToDoDto(this.todos[index]));
+    // const userRepository = await this.connection.getRepository(UserEntity);
+    // const user = await userRepository.findOne(userId);
+
+    todoEntity.name = name;
+    todoEntity.description = description;
+    todoEntity.status = status;
+    todoEntity.dateOfCompletion = dateOfCompletion;
+    // todoEntity.user = user;
+    this.todoRepository.save(todoEntity);
+    return toPromise(toToDoDto(todoEntity));
   }
 
-  async createToDo(todoDto: ToDoCreateDto): Promise<ToDoDto> {
-    const { name, description } = todoDto;
-    const newToDoEntity: ToDoEntity = {
-      id: uuidv4(),
-      name,
-      description,
-    };
-    this.todos.push(newToDoEntity);
-    return toPromise(toToDoDto(newToDoEntity));
-  }
-
-  async updateToDo(id: string, todoDto: ToDoDto): Promise<ToDoDto> {
-    const index = this.todos.findIndex((todo: ToDoEntity) => todo.id === id);
-    if (index < 0) {
-      throw new HttpException("Todo item doesn't exist", HttpStatus.NOT_FOUND);
+  async remove(id: string): Promise<void> {
+    const todoEntity = await this.todoRepository.findOne(id);
+    if (!todoEntity) {
+      throw new HttpException('Todo does not exist', HttpStatus.NOT_FOUND);
     }
-    this.todos[index].name = todoDto.name;
-    this.todos[index].description = todoDto.description;
-    return toPromise(toToDoDto(this.todos[index]));
+    if(todoEntity.status === TodoStatus.COMPLETED) {
+      throw new BadRequestException(
+        'Could not delete a todo with completed status',
+      );
+    }
+    await this.todoRepository.remove(todoEntity);
   }
 
-  async deleteToDoDto(id: string): Promise<ToDoDto> {
-    const index = this.todos.findIndex((todo: ToDoEntity) => todo.id === id);
-    if (index < 0) {
-      throw new HttpException("Todo item doesn't exist", HttpStatus.NOT_FOUND);
+  async assignToDo(assignToDoDto: AssignToDoDto, currentUser: UserEntity) : Promise<void> {
+    if(currentUser.id === assignToDoDto.userId) {
+      throw new BadRequestException('Could not assign this todo to yourself!');
     }
-    const deletedTodo = this.todos.splice(index, 1);
-    return toPromise(toToDoDto(deletedTodo[0]));
+    const { userId, todoId } = assignToDoDto;
+    const todoEntity = await this.todoRepository.findOne(todoId);
+    const userRepository = await this.connection.getRepository(UserEntity);
+    const userEntity = await userRepository.findOne(userId);
+    if(!todoEntity || !userEntity) {
+      throw new BadRequestException();
+    }
+    todoEntity.user = userEntity;
+    this.todoRepository.save(todoEntity);
   }
 }

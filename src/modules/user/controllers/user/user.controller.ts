@@ -1,5 +1,4 @@
 import { UserDto } from '@modules/user/dtos/user.dto';
-import { UserCreateDto } from '@modules/user/dtos/usercreate.dto';
 import { UserUpdateDto } from '@modules/user/dtos/userupdate.dto';
 import { UserService } from '@modules/user/services/user/user.service';
 import {
@@ -7,42 +6,40 @@ import {
   Controller,
   Delete,
   Get,
+  HttpStatus,
   Param,
+  ParseUUIDPipe,
   Post,
   Put,
 } from '@nestjs/common';
-import { Public } from '@shared/custom-decorators/isPublic';
 
 @Controller('api/users')
 export class UserController {
   constructor(private userService: UserService) {}
+  @Get()
+  public async findAll(): Promise<UserDto[]> {
+    return await this.userService.findAll();
+  }
 
-  // @Get()
-  // public async findAll(): Promise<UserDto[]> {
-  //   return await this.userService.getAllUsers();
-  // }
+  @Get(':uuid')
+  public async findOne(
+    @Param('uuid', new ParseUUIDPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE })) uuid: string
+    ): Promise<UserDto> {
+    return await this.userService.findOne(uuid);
+  }
 
-  // @Get(':id')
-  // public async findOne(@Param('id') id: string): Promise<UserDto> {
-  //   return await this.userService.getUserById(id);
-  // }
+  @Put(':uuid')
+  public async update(
+    @Param('uuid', new ParseUUIDPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE })) uuid: string,
+    @Body() updateUserDto: UserUpdateDto
+  ): Promise<UserDto> {
+    return await this.userService.update(uuid, updateUserDto);
+  }
 
-  // @Post()
-  // @Public()
-  // public async create(@Body() createUserDto: UserCreateDto): Promise<UserDto> {
-  //   return await this.userService.createUser(createUserDto);
-  // }
-
-  // @Put(':id')
-  // public async update(
-  //   @Param('id') id: string,
-  //   @Body() updateUserDto: UserUpdateDto
-  // ): Promise<UserDto> {
-  //   return await this.userService.updateUser(id, updateUserDto);
-  // }
-
-  // @Delete(':id')
-  // public async delete(@Param('id') id: string): Promise<UserDto> {
-  //   return await this.userService.delete(id);
-  // }
+  @Delete(':uuid')
+  public async delete(
+    @Param('uuid', new ParseUUIDPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE })) uuid: string
+    ): Promise<void> {
+    return await this.userService.remove(uuid);
+  }
 }
