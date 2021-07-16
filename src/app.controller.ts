@@ -3,7 +3,8 @@ import { AuthService } from '@modules/auth/services/auth/auth.service';
 import { UserDto } from '@modules/user/dtos/user.dto';
 import { UserCreateDto } from '@modules/user/dtos/usercreate.dto';
 import { UserService } from '@modules/user/services/user/user.service';
-import { Controller, Request, Post, UseGuards, Get, Body } from '@nestjs/common';
+import { Controller, Request, Post, UseGuards, Get, Body, UseInterceptors, CacheInterceptor, OnApplicationBootstrap } from '@nestjs/common';
+import { SchedulerRegistry } from '@nestjs/schedule';
 import { Public } from '@shared/custom-decorators/isPublic';
 import { ValidationPipe } from '@shared/pipes/validation.pipe';
 
@@ -11,7 +12,7 @@ import { ValidationPipe } from '@shared/pipes/validation.pipe';
 export class AppController {
   constructor(
     private readonly authService: AuthService,
-    private readonly userService: UserService
+    private readonly userService: UserService,
   ) { }
 
   @Get()

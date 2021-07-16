@@ -15,6 +15,4 @@ export class UserCreateDto {
 
     @IsString()
     confirmPassword: string;
-
-    // todos?: ToDoDto[];
 }

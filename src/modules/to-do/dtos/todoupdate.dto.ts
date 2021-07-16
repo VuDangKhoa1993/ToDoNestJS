@@ -1,18 +1,4 @@
-import { TodoStatus } from '@shared/constant/constant';
-import { IsString, IsEnum, IsDateString } from 'class-validator';
+import { ToDoCreateDto } from './todocreate.dto';
+import { PartialType } from '@nestjs/mapped-types';
 
-export class ToDoUpdateDto {
-  @IsString()
-  name: string;
-
-  @IsString()
-  description?: string;
-
-  @IsEnum(TodoStatus, {
-    message: 'Status can be only whether new or completed value',
-  })
-  status: TodoStatus;
-
-  @IsDateString({ strict: true })
-  dateOfCompletion: string;
-}
+export class ToDoUpdateDto extends PartialType(ToDoCreateDto) { }
